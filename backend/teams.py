@@ -31,6 +31,20 @@ if any(person not in ROSTER for person in ALIASES.values()):
     raise ValueError("Alias must reference a configured member")
 ROSTER.update({alias: ROSTER[person] for alias, person in ALIASES.items()})
 
+DEPARTMENTS = {}
+for configured_team in TEAMS:
+    for department in configured_team.get("departments", []):
+        if not isinstance(department, str) or not department.strip():
+            raise ValueError("Invalid department configuration")
+        key = normalize(department)
+        if key in DEPARTMENTS and DEPARTMENTS[key] != configured_team["id"]:
+            raise ValueError("Department belongs to multiple teams")
+        DEPARTMENTS[key] = configured_team["id"]
+
+
+def team_for_department(department):
+    return DEPARTMENTS.get(normalize(department), "unassigned")
+
 
 def team_for(person):
     return ROSTER.get(normalize(person), "unassigned")
@@ -39,7 +53,7 @@ def team_for(person):
 def annotate(event):
     if event.get("kind") != "leave":
         return dict(event)
-    team = team_for(event.get("person"))
+    team = team_for_department(event["department"]) if "department" in event else team_for(event.get("person"))
     result = {**event, "team": team, "teamName": {"AI": "AI팀", "SW": "SW팀"}.get(team, "미분류")}
     # Presentation only, after source reconciliation: never infer a source slot.
     if event.get("amount") == 0.5 and not any(

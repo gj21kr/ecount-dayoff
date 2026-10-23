@@ -6,6 +6,9 @@
       "members": [
         "가상연구원",
         "가상개발자"
+      ],
+      "departments": [
+        "Example Research"
       ]
     },
     {
@@ -17,6 +20,9 @@
         "가상팀원다",
         "가상팀원라",
         "가상팀원마"
+      ],
+      "departments": [
+        "Example Engineering"
       ]
     }
   ],

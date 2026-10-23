@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from .parsers import midnight
-from .teams import normalize, team_for, ALIASES
+from .teams import normalize, team_for, team_for_department, ALIASES
 
 
 def identity(person):
@@ -33,6 +33,9 @@ def load_snapshot(path: Path):
         if captured.utcoffset() != timedelta(hours=9) or not 0 < (end - begin).days <= 1830:
             raise ValueError
         rows = data["rows"]
+        filter_mode = data.get("filterMode", "person")
+        if filter_mode not in {"person", "department"}:
+            raise ValueError
         if not isinstance(rows, list) or len(rows) > 10000:
             raise ValueError
     except (ValueError, TypeError, KeyError, AttributeError, OSError):
@@ -45,7 +48,13 @@ def load_snapshot(path: Path):
         try:
             day = date.fromisoformat(row["date"])
             person, kind, amount, slot = row["person"], row["type"], row["amount"], row["slot"]
-            if not isinstance(person, str) or team_for(person) == "unassigned" or not begin <= day < end:
+            if not isinstance(person, str) or not person.strip() or not begin <= day < end:
+                raise ValueError
+            if filter_mode == "department" or "department" in row:
+                department = row.get("department")
+                if not isinstance(department, str) or team_for_department(department) == "unassigned":
+                    raise ValueError
+            elif team_for(person) == "unassigned":
                 raise ValueError
             if isinstance(amount, bool) or amount not in {0.5, 1} or slot not in {None, "am", "pm"}:
                 raise ValueError
@@ -56,6 +65,8 @@ def load_snapshot(path: Path):
             label = "오전반차" if slot == "am" else "오후반차" if slot == "pm" else "연차" if amount == 1 else "반차"
             key = f"{identity(person)}|{day}|{kind}|{slot}|{amount}"
             events.append({"id": "ecount-" + sha256(key.encode()).hexdigest()[:24], "title": f"{person} · {label}", "kind": "leave", "start": midnight(day).isoformat(), "end": midnight(day + timedelta(days=1)).isoformat(), "allDay": True, "person": person, "leaveType": label, "amount": float(amount), "location": None, "url": None, "source": "eCount 근태현황", "sourceType": "ecount"})
+            if "department" in row:
+                events[-1]["department"] = row["department"]
         except (ValueError, TypeError, KeyError):
             reviews.append(review(str(number), f"eCount {number + 1}번째 행의 팀원·근태일자·휴가 구분을 확인해야 합니다."))
     events = list({event["id"]: event for event in events}.values())
