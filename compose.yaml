@@ -1,0 +1,18 @@
+services:
+  dashboard:
+    build: .
+    container_name: ai-team-dashboard
+    restart: unless-stopped
+    network_mode: bridge
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      LEAVE_DIR: /imports/eCount
+      DATA_DIR: /data
+      TEAM_CONFIG_FILE: /config/teams.json
+      FRONTEND_DIR: /app/frontend/dist
+      TZ: Asia/Seoul
+    volumes:
+      - ./.credentials/imports:/imports/eCount:ro
+      - ./.credentials/data:/data
+      - ./.credentials/teams.json:/config/teams.json:ro

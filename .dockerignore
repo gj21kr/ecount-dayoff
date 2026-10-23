@@ -1,0 +1,7 @@
+.env
+data
+artifacts
+**/node_modules
+**/__pycache__
+.git
+.credentials
